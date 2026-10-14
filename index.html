@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -143,7 +144,8 @@
             transition: border-color 0.2s;
         }
 
-        .thumbnails img.active, .thumbnails img:hover {
+        .thumbnails img.active,
+        .thumbnails img:hover {
             border: 2px solid var(--ozon-blue);
         }
 
@@ -323,8 +325,13 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         /* --- Стили для контента вкладок --- */
@@ -391,12 +398,16 @@
 
         /* --- Адаптивность (Mobile) --- */
         @media (max-width: 768px) {
-            .search-bar, .header-icons span:nth-child(n+3) {
-                display: none; /* Скрываем поиск и лишние иконки на мобильных */
+
+            .search-bar,
+            .header-icons span:nth-child(n+3) {
+                display: none;
+                /* Скрываем поиск и лишние иконки на мобильных */
             }
-            
+
             .logo {
-                font-size: 18px; /* Чуть уменьшаем логотип на мобильных */
+                font-size: 18px;
+                /* Чуть уменьшаем логотип на мобильных */
             }
 
             .product-layout {
@@ -434,6 +445,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <!-- Шапка -->
@@ -453,9 +465,9 @@
     </header>
 
     <div class="breadcrumbs">
-        <a href="#">Главная</a> <span>/</span> 
-        <a href="#">Ювелирные украшения</a> <span>/</span> 
-        <a href="#">Подвески</a> <span>/</span> 
+        <a href="#">Главная</a> <span>/</span>
+        <a href="#">Ювелирные украшения</a> <span>/</span>
+        <a href="#">Подвески</a> <span>/</span>
         <span>Башмачок Спиридона</span>
     </div>
 
@@ -465,21 +477,21 @@
             <!-- Галерея -->
             <div class="gallery">
                 <div class="thumbnails">
-                    <img src="img1.jpg" class="active" onclick="changeImage(this, 'img1.jpg')" alt="Фото 1">
-                    <img src="img2.jpg" onclick="changeImage(this, 'img2.jpg')" alt="Фото 2">
-                    <img src="img3.jpg" onclick="changeImage(this, 'img3.jpg')" alt="Фото 3">
-                    <img src="img4.jpg" onclick="changeImage(this, 'img4.jpg')" alt="Фото 4">
-                    <img src="img5.jpg" onclick="changeImage(this, 'img5.jpg')" alt="Фото 5">
+                    <img src="img1.png" class="active" onclick="changeImage(this, 'img1.png')" alt="Фото 1">
+                    <img src="img2.png" onclick="changeImage(this, 'img2.png')" alt="Фото 2">
+                    <img src="img3.png" onclick="changeImage(this, 'img3.png')" alt="Фото 3">
+                    <img src="img4.png" onclick="changeImage(this, 'img4.png')" alt="Фото 4">
+                    <img src="img5.png" onclick="changeImage(this, 'img5.png')" alt="Фото 5">
                 </div>
                 <div class="main-image">
-                    <img id="mainImage" src="img1.jpg" alt="Подвеска Башмачок Спиридона">
+                    <img id="mainImage" src="img1.png" alt="Подвеска Башмачок Спиридона">
                 </div>
             </div>
 
             <!-- Информация -->
             <div class="product-info">
                 <h1>Подвеска из серебра 925 пробы с позолотой 585 "Башмачок Спиридона", освящена в храме</h1>
-                
+
                 <div class="rating">
                     ★★★★★ <span>4.9 · 124 отзыва</span>
                 </div>
@@ -521,8 +533,11 @@
             <!-- Вкладка: Описание -->
             <div id="desc" class="tab-content active description-text">
                 <h2>О товаре</h2>
-                <p style="margin-top: 10px;">Подвеска «Башмачок Спиридона» — это не просто украшение, а глубокий символ веры и надежды. Изделие выполнено из серебра 925 пробы с гальваническим покрытием золотом 585 пробы и инкрустировано фианитами.</p>
-                <p><strong>Святой Спиридон Тримифунтский</strong> — один из самых почитаемых православных святых. К нему обращаются с молитвами:</p>
+                <p style="margin-top: 10px;">Подвеска «Башмачок Спиридона» — это не просто украшение, а глубокий символ
+                    веры и надежды. Изделие выполнено из серебра 925 пробы с гальваническим покрытием золотом 585 пробы
+                    и инкрустировано фианитами.</p>
+                <p><strong>Святой Спиридон Тримифунтский</strong> — один из самых почитаемых православных святых. К нему
+                    обращаются с молитвами:</p>
                 <ul>
                     <li>О сохранении мира и согласия в семье</li>
                     <li>Об урегулировании конфликтов</li>
@@ -530,7 +545,8 @@
                     <li>В различных жизненных нуждах, финансовых вопросах и поиске работы</li>
                     <li>О приобретении жилья и успехе в бизнесе</li>
                 </ul>
-                <p>Подвеска освящена в храме г. Кострома. Универсальный размер ушка (8×5 мм) позволяет носить её как на цепочке, так и на гайтане или браслете.</p>
+                <p>Подвеска освящена в храме г. Кострома. Универсальный размер ушка (8×5 мм) позволяет носить её как на
+                    цепочке, так и на гайтане или браслете.</p>
                 <p style="color: #707070; font-size: 12px; margin-top: 20px;">* Поставляется без цепи.</p>
             </div>
 
@@ -586,21 +602,25 @@
                             <span>Елена В.</span>
                             <span class="review-stars">★★★★★</span>
                         </div>
-                        <p>Очень красивая и аккуратная подвеска! Заказывала в подарок сестре. Золото блестит, камушки переливаются. Пришла в красивой коробочке, есть бирка и сертификат. Освящена, что очень важно. Спасибо продавцу!</p>
+                        <p>Очень красивая и аккуратная подвеска! Заказывала в подарок сестре. Золото блестит, камушки
+                            переливаются. Пришла в красивой коробочке, есть бирка и сертификат. Освящена, что очень
+                            важно. Спасибо продавцу!</p>
                     </div>
                     <div class="review-item">
                         <div class="review-header">
                             <span>Дмитрий К.</span>
                             <span class="review-stars">★★★★★</span>
                         </div>
-                        <p>Ношу на гайтане. Размер ушка идеально подошел. Вес легкий, на шее не чувствуется. Качество исполнения на высоте, видно ручную работу. Рекомендую!</p>
+                        <p>Ношу на гайтане. Размер ушка идеально подошел. Вес легкий, на шее не чувствуется. Качество
+                            исполнения на высоте, видно ручную работу. Рекомендую!</p>
                     </div>
                     <div class="review-item">
                         <div class="review-header">
                             <span>Анна С.</span>
                             <span class="review-stars">★★★★☆</span>
                         </div>
-                        <p>Подвеска очень милая, но показалась немного меньше, чем на фото. В остальном — претензий нет, серебро качественное, позолота ровная. Доставка быстрая.</p>
+                        <p>Подвеска очень милая, но показалась немного меньше, чем на фото. В остальном — претензий нет,
+                            серебро качественное, позолота ровная. Доставка быстрая.</p>
                     </div>
                 </div>
             </div>
@@ -617,10 +637,10 @@
         // Переключение главного изображения
         function changeImage(element, src) {
             document.getElementById('mainImage').src = src;
-            
+
             const thumbnails = document.querySelectorAll('.thumbnails img');
             thumbnails.forEach(thumb => thumb.classList.remove('active'));
-            
+
             element.classList.add('active');
         }
 
@@ -629,15 +649,16 @@
             // Скрыть все вкладки
             const contents = document.querySelectorAll('.tab-content');
             contents.forEach(content => content.classList.remove('active'));
-            
+
             // Убрать активный класс у всех кнопок
             const buttons = document.querySelectorAll('.tab-btn');
             buttons.forEach(btn => btn.classList.remove('active'));
-            
+
             // Показать нужную вкладку и активировать кнопку
             document.getElementById(tabId).classList.add('active');
             btnElement.classList.add('active');
         }
     </script>
 </body>
+
 </html>
