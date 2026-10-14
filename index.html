@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -144,8 +143,7 @@
             transition: border-color 0.2s;
         }
 
-        .thumbnails img.active,
-        .thumbnails img:hover {
+        .thumbnails img.active, .thumbnails img:hover {
             border: 2px solid var(--ozon-blue);
         }
 
@@ -158,12 +156,17 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            cursor: zoom-in;
+            position: relative;
+            user-select: none;
+            touch-action: pan-y;
         }
 
         .main-image img {
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
+            pointer-events: none; /* чтобы клик ловил контейнер, а не сама картинка */
         }
 
         /* --- Информация о товаре --- */
@@ -325,13 +328,8 @@
         }
 
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-
-            to {
-                opacity: 1;
-            }
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         /* --- Стили для контента вкладок --- */
@@ -387,6 +385,100 @@
             color: #ffb400;
         }
 
+        /* --- Полноэкранный просмотр --- */
+        .fullscreen-viewer {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            animation: fadeIn 0.25s;
+            touch-action: none;
+            user-select: none;
+        }
+
+        .fullscreen-viewer.open {
+            display: flex;
+        }
+
+        .fullscreen-viewer img {
+            max-width: 92vw;
+            max-height: 85vh;
+            object-fit: contain;
+            pointer-events: none;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: rgba(255,255,255,0.12);
+            border: none;
+            color: #fff;
+            font-size: 28px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+
+        .close-btn:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        .nav-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            border: none;
+            font-size: 32px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+
+        .nav-arrow:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        .nav-arrow.prev { left: 20px; }
+        .nav-arrow.next { right: 20px; }
+
+        @media (min-width: 768px) {
+            .nav-arrow { display: flex; }
+        }
+
+        .counter {
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-size: 14px;
+            background: rgba(255,255,255,0.12);
+            padding: 6px 14px;
+            border-radius: 20px;
+            letter-spacing: 1px;
+        }
+
         /* --- Футер --- */
         footer {
             background-color: var(--ozon-gray-bg);
@@ -398,16 +490,12 @@
 
         /* --- Адаптивность (Mobile) --- */
         @media (max-width: 768px) {
-
-            .search-bar,
-            .header-icons span:nth-child(n+3) {
+            .search-bar, .header-icons span:nth-child(n+3) {
                 display: none;
-                /* Скрываем поиск и лишние иконки на мобильных */
             }
-
+            
             .logo {
                 font-size: 18px;
-                /* Чуть уменьшаем логотип на мобильных */
             }
 
             .product-layout {
@@ -442,10 +530,17 @@
             .tab-btn {
                 font-size: 14px;
             }
+
+            .close-btn {
+                top: 10px;
+                right: 10px;
+                width: 42px;
+                height: 42px;
+                font-size: 24px;
+            }
         }
     </style>
 </head>
-
 <body>
 
     <!-- Шапка -->
@@ -465,9 +560,9 @@
     </header>
 
     <div class="breadcrumbs">
-        <a href="#">Главная</a> <span>/</span>
-        <a href="#">Ювелирные украшения</a> <span>/</span>
-        <a href="#">Подвески</a> <span>/</span>
+        <a href="#">Главная</a> <span>/</span> 
+        <a href="#">Ювелирные украшения</a> <span>/</span> 
+        <a href="#">Подвески</a> <span>/</span> 
         <span>Башмачок Спиридона</span>
     </div>
 
@@ -477,13 +572,13 @@
             <!-- Галерея -->
             <div class="gallery">
                 <div class="thumbnails">
-                    <img src="img1.png" class="active" onclick="changeImage(this, 'img1.png')" alt="Фото 1">
-                    <img src="img2.png" onclick="changeImage(this, 'img2.png')" alt="Фото 2">
-                    <img src="img3.png" onclick="changeImage(this, 'img3.png')" alt="Фото 3">
-                    <img src="img4.png" onclick="changeImage(this, 'img4.png')" alt="Фото 4">
-                    <img src="img5.png" onclick="changeImage(this, 'img5.png')" alt="Фото 5">
+                    <img src="img1.png" class="active" onclick="changeImage(this, 0)" alt="Фото 1">
+                    <img src="img2.png" onclick="changeImage(this, 1)" alt="Фото 2">
+                    <img src="img3.png" onclick="changeImage(this, 2)" alt="Фото 3">
+                    <img src="img4.png" onclick="changeImage(this, 3)" alt="Фото 4">
+                    <img src="img5.png" onclick="changeImage(this, 4)" alt="Фото 5">
                 </div>
-                <div class="main-image">
+                <div class="main-image" id="mainImageContainer">
                     <img id="mainImage" src="img1.png" alt="Подвеска Башмачок Спиридона">
                 </div>
             </div>
@@ -491,7 +586,7 @@
             <!-- Информация -->
             <div class="product-info">
                 <h1>Подвеска из серебра 925 пробы с позолотой 585 "Башмачок Спиридона", освящена в храме</h1>
-
+                
                 <div class="rating">
                     ★★★★★ <span>4.9 · 124 отзыва</span>
                 </div>
@@ -533,11 +628,8 @@
             <!-- Вкладка: Описание -->
             <div id="desc" class="tab-content active description-text">
                 <h2>О товаре</h2>
-                <p style="margin-top: 10px;">Подвеска «Башмачок Спиридона» — это не просто украшение, а глубокий символ
-                    веры и надежды. Изделие выполнено из серебра 925 пробы с гальваническим покрытием золотом 585 пробы
-                    и инкрустировано фианитами.</p>
-                <p><strong>Святой Спиридон Тримифунтский</strong> — один из самых почитаемых православных святых. К нему
-                    обращаются с молитвами:</p>
+                <p style="margin-top: 10px;">Подвеска «Башмачок Спиридона» — это не просто украшение, а глубокий символ веры и надежды. Изделие выполнено из серебра 925 пробы с гальваническим покрытием золотом 585 пробы и инкрустировано фианитами.</p>
+                <p><strong>Святой Спиридон Тримифунтский</strong> — один из самых почитаемых православных святых. К нему обращаются с молитвами:</p>
                 <ul>
                     <li>О сохранении мира и согласия в семье</li>
                     <li>Об урегулировании конфликтов</li>
@@ -545,8 +637,7 @@
                     <li>В различных жизненных нуждах, финансовых вопросах и поиске работы</li>
                     <li>О приобретении жилья и успехе в бизнесе</li>
                 </ul>
-                <p>Подвеска освящена в храме г. Кострома. Универсальный размер ушка (8×5 мм) позволяет носить её как на
-                    цепочке, так и на гайтане или браслете.</p>
+                <p>Подвеска освящена в храме г. Кострома. Универсальный размер ушка (8×5 мм) позволяет носить её как на цепочке, так и на гайтане или браслете.</p>
                 <p style="color: #707070; font-size: 12px; margin-top: 20px;">* Поставляется без цепи.</p>
             </div>
 
@@ -554,42 +645,15 @@
             <div id="specs" class="tab-content">
                 <h2>Характеристики</h2>
                 <table class="specs-table">
-                    <tr>
-                        <td>Материал</td>
-                        <td>Серебро 925 пробы</td>
-                    </tr>
-                    <tr>
-                        <td>Покрытие</td>
-                        <td>Золото 585 пробы</td>
-                    </tr>
-                    <tr>
-                        <td>Вставка</td>
-                        <td>Фианит</td>
-                    </tr>
-                    <tr>
-                        <td>Центральный камень</td>
-                        <td>3 мм</td>
-                    </tr>
-                    <tr>
-                        <td>Высота с ушком</td>
-                        <td>1.7 см</td>
-                    </tr>
-                    <tr>
-                        <td>Ширина</td>
-                        <td>5 мм</td>
-                    </tr>
-                    <tr>
-                        <td>Размер ушка</td>
-                        <td>8×5 мм</td>
-                    </tr>
-                    <tr>
-                        <td>Примерный вес</td>
-                        <td>0.76 г</td>
-                    </tr>
-                    <tr>
-                        <td>Страна производства</td>
-                        <td>Россия (г. Кострома)</td>
-                    </tr>
+                    <tr><td>Материал</td><td>Серебро 925 пробы</td></tr>
+                    <tr><td>Покрытие</td><td>Золото 585 пробы</td></tr>
+                    <tr><td>Вставка</td><td>Фианит</td></tr>
+                    <tr><td>Центральный камень</td><td>3 мм</td></tr>
+                    <tr><td>Высота с ушком</td><td>1.7 см</td></tr>
+                    <tr><td>Ширина</td><td>5 мм</td></tr>
+                    <tr><td>Размер ушка</td><td>8×5 мм</td></tr>
+                    <tr><td>Примерный вес</td><td>0.76 г</td></tr>
+                    <tr><td>Страна производства</td><td>Россия (г. Кострома)</td></tr>
                 </table>
             </div>
 
@@ -602,25 +666,21 @@
                             <span>Елена В.</span>
                             <span class="review-stars">★★★★★</span>
                         </div>
-                        <p>Очень красивая и аккуратная подвеска! Заказывала в подарок сестре. Золото блестит, камушки
-                            переливаются. Пришла в красивой коробочке, есть бирка и сертификат. Освящена, что очень
-                            важно. Спасибо продавцу!</p>
+                        <p>Очень красивая и аккуратная подвеска! Заказывала в подарок сестре. Золото блестит, камушки переливаются. Пришла в красивой коробочке, есть бирка и сертификат. Освящена, что очень важно. Спасибо продавцу!</p>
                     </div>
                     <div class="review-item">
                         <div class="review-header">
                             <span>Дмитрий К.</span>
                             <span class="review-stars">★★★★★</span>
                         </div>
-                        <p>Ношу на гайтане. Размер ушка идеально подошел. Вес легкий, на шее не чувствуется. Качество
-                            исполнения на высоте, видно ручную работу. Рекомендую!</p>
+                        <p>Ношу на гайтане. Размер ушка идеально подошел. Вес легкий, на шее не чувствуется. Качество исполнения на высоте, видно ручную работу. Рекомендую!</p>
                     </div>
                     <div class="review-item">
                         <div class="review-header">
                             <span>Анна С.</span>
                             <span class="review-stars">★★★★☆</span>
                         </div>
-                        <p>Подвеска очень милая, но показалась немного меньше, чем на фото. В остальном — претензий нет,
-                            серебро качественное, позолота ровная. Доставка быстрая.</p>
+                        <p>Подвеска очень милая, но показалась немного меньше, чем на фото. В остальном — претензий нет, серебро качественное, позолота ровная. Доставка быстрая.</p>
                     </div>
                 </div>
             </div>
@@ -632,33 +692,163 @@
         <p>Все изображения и тексты носят ознакомительный характер.</p>
     </footer>
 
+    <!-- Полноэкранный просмотрщик -->
+    <div class="fullscreen-viewer" id="fullscreenViewer">
+        <button class="close-btn" id="closeBtn" aria-label="Закрыть">✕</button>
+        <button class="nav-arrow prev" id="prevBtnFs" aria-label="Предыдущее">‹</button>
+        <img id="fullscreenImage" src="" alt="Просмотр">
+        <button class="nav-arrow next" id="nextBtnFs" aria-label="Следующее">›</button>
+        <div class="counter" id="counter">1 / 5</div>
+    </div>
+
     <!-- Скрипты -->
     <script>
-        // Переключение главного изображения
-        function changeImage(element, src) {
-            document.getElementById('mainImage').src = src;
+        // Массив с путями ко всем картинкам
+        const images = ['img1.png', 'img2.png', 'img3.png', 'img4.png', 'img5.png'];
+        let currentIndex = 0;
 
+        // --- Вспомогательная функция: обновить активную миниатюру ---
+        function updateActiveThumb(index) {
             const thumbnails = document.querySelectorAll('.thumbnails img');
-            thumbnails.forEach(thumb => thumb.classList.remove('active'));
-
-            element.classList.add('active');
+            thumbnails.forEach((thumb, i) => {
+                thumb.classList.toggle('active', i === index);
+            });
         }
 
-        // Переключение вкладок
+        // --- Функция: показать картинку по индексу ---
+        function showImage(index) {
+            // Зацикливаем индекс
+            if (index < 0) index = images.length - 1;
+            if (index >= images.length) index = 0;
+
+            currentIndex = index;
+            const src = images[index];
+
+            document.getElementById('mainImage').src = src;
+            document.getElementById('fullscreenImage').src = src;
+            document.getElementById('counter').textContent = (index + 1) + ' / ' + images.length;
+
+            updateActiveThumb(index);
+        }
+
+        // --- Функция: клик по миниатюре ---
+        function changeImage(element, index) {
+            showImage(index);
+        }
+
+        // --- Клик по главному изображению → открыть полноэкранный режим ---
+        const mainImageContainer = document.getElementById('mainImageContainer');
+        const fullscreenViewer = document.getElementById('fullscreenViewer');
+
+        mainImageContainer.addEventListener('click', () => {
+            document.getElementById('fullscreenImage').src = images[currentIndex];
+            document.getElementById('counter').textContent = (currentIndex + 1) + ' / ' + images.length;
+            fullscreenViewer.classList.add('open');
+            document.body.style.overflow = 'hidden'; // блокируем прокрутку фона
+        });
+
+        // --- Закрыть полноэкранный режим ---
+        function closeFullscreen() {
+            fullscreenViewer.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        document.getElementById('closeBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeFullscreen();
+        });
+
+        // Клик по фону (не по картинке) закрывает
+        fullscreenViewer.addEventListener('click', (e) => {
+            if (e.target === fullscreenViewer) {
+                closeFullscreen();
+            }
+        });
+
+        // --- Стрелки навигации в полноэкранном режиме ---
+        document.getElementById('prevBtnFs').addEventListener('click', (e) => {
+            e.stopPropagation();
+            showImage(currentIndex - 1);
+        });
+
+        document.getElementById('nextBtnFs').addEventListener('click', (e) => {
+            e.stopPropagation();
+            showImage(currentIndex + 1);
+        });
+
+        // --- Стрелки клавиатуры и Escape (для десктопа) ---
+        document.addEventListener('keydown', (e) => {
+            if (!fullscreenViewer.classList.contains('open')) return;
+            if (e.key === 'ArrowLeft') showImage(currentIndex - 1);
+            if (e.key === 'ArrowRight') showImage(currentIndex + 1);
+            if (e.key === 'Escape') closeFullscreen();
+        });
+
+        // --- Свайпы ---
+        // Универсальная функция для свайпа на элементе
+        function attachSwipe(el, onSwipeLeft, onSwipeRight) {
+            let startX = 0;
+            let startY = 0;
+            let isSwiping = false;
+            const threshold = 40; // минимальное расстояние для свайпа
+
+            el.addEventListener('touchstart', (e) => {
+                if (e.touches.length !== 1) return;
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                isSwiping = true;
+            }, { passive: true });
+
+            el.addEventListener('touchmove', (e) => {
+                if (!isSwiping) return;
+                const dx = e.touches[0].clientX - startX;
+                const dy = e.touches[0].clientY - startY;
+                // Если свайп больше вертикальный — не мешаем скроллу страницы
+                if (Math.abs(dy) > Math.abs(dx)) {
+                    isSwiping = false;
+                }
+            }, { passive: true });
+
+            el.addEventListener('touchend', (e) => {
+                if (!isSwiping) return;
+                const endX = e.changedTouches[0].clientX;
+                const endY = e.changedTouches[0].clientY;
+                const dx = endX - startX;
+                const dy = endY - startY;
+
+                if (Math.abs(dx) > threshold && Math.abs(dx) > Math.abs(dy)) {
+                    if (dx > 0) onSwipeRight();
+                    else onSwipeLeft();
+                }
+                isSwiping = false;
+            }, { passive: true });
+        }
+
+        // Свайп на главном изображении
+        attachSwipe(
+            mainImageContainer,
+            () => showImage(currentIndex + 1), // свайп влево → следующее
+            () => showImage(currentIndex - 1)  // свайп вправо → предыдущее
+        );
+
+        // Свайп в полноэкранном режиме
+        attachSwipe(
+            fullscreenViewer,
+            () => showImage(currentIndex + 1),
+            () => showImage(currentIndex - 1)
+        );
+
+        // --- Переключение вкладок ---
         function openTab(tabId, btnElement) {
-            // Скрыть все вкладки
             const contents = document.querySelectorAll('.tab-content');
             contents.forEach(content => content.classList.remove('active'));
-
-            // Убрать активный класс у всех кнопок
+            
             const buttons = document.querySelectorAll('.tab-btn');
             buttons.forEach(btn => btn.classList.remove('active'));
-
-            // Показать нужную вкладку и активировать кнопку
+            
             document.getElementById(tabId).classList.add('active');
             btnElement.classList.add('active');
         }
     </script>
 </body>
-
 </html>
