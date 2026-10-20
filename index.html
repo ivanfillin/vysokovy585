@@ -167,6 +167,8 @@
             max-height: 100%;
             object-fit: contain;
             pointer-events: none; /* чтобы клик ловил контейнер, а не сама картинка */
+            transition: opacity 0.2s ease;
+            will-change: opacity;
         }
 
         /* --- Информация о товаре --- */
@@ -409,6 +411,8 @@
             max-height: 85vh;
             object-fit: contain;
             pointer-events: none;
+            transition: opacity 0.2s ease;
+            will-change: opacity;
         }
 
         .close-btn {
@@ -707,6 +711,50 @@
         const images = ['img1.png', 'img2.png', 'img3.png', 'img4.png', 'img5.png'];
         let currentIndex = 0;
 
+        // Основные DOM-элементы галереи
+        const mainImageEl = document.getElementById('mainImage');
+        const mainImageContainer = document.getElementById('mainImageContainer');
+        const fullscreenViewer = document.getElementById('fullscreenViewer');
+        const fullscreenImageEl = document.getElementById('fullscreenImage');
+        const counterEl = document.getElementById('counter');
+
+        // --- Плавная смена изображения (фейд) ---
+        const FADE_OUT_MS = 200; // синхронизировано с CSS transition у картинок
+        const fadeTimers = { main: null, fs: null };
+        const fadeRevealTimers = { main: null, fs: null };
+
+        /**
+         * Меняет src у изображения с плавным затуханием и появлением.
+         * key — 'main' или 'fs' (чтобы таймеры не конфликтовали)
+         */
+        function fadeSwapImage(key, imgEl, newSrc) {
+            clearTimeout(fadeTimers[key]);
+            clearTimeout(fadeRevealTimers[key]);
+
+            // Плавно прячем текущее изображение
+            imgEl.style.opacity = '0';
+
+            fadeTimers[key] = setTimeout(() => {
+                const reveal = () => {
+                    clearTimeout(fadeRevealTimers[key]);
+                    imgEl.style.opacity = '1';
+                };
+
+                imgEl.onload = reveal;
+                imgEl.onerror = reveal;
+
+                imgEl.src = newSrc;
+
+                // Если картинка уже в кэше — показываем после отрисовки кадра
+                if (imgEl.complete && imgEl.naturalWidth > 0) {
+                    requestAnimationFrame(() => requestAnimationFrame(reveal));
+                }
+
+                // Страховка, чтобы изображение не осталось невидимым
+                fadeRevealTimers[key] = setTimeout(reveal, 1500);
+            }, FADE_OUT_MS);
+        }
+
         // --- Вспомогательная функция: обновить активную миниатюру ---
         function updateActiveThumb(index) {
             const thumbnails = document.querySelectorAll('.thumbnails img');
@@ -721,13 +769,24 @@
             if (index < 0) index = images.length - 1;
             if (index >= images.length) index = 0;
 
+            // Если это уже текущее изображение — не мигаем
+            if (index === currentIndex) return;
+
             currentIndex = index;
             const src = images[index];
 
-            document.getElementById('mainImage').src = src;
-            document.getElementById('fullscreenImage').src = src;
-            document.getElementById('counter').textContent = (index + 1) + ' / ' + images.length;
+            // Главное изображение — с фейдом
+            fadeSwapImage('main', mainImageEl, src);
 
+            // Полноэкранное — с фейдом, только если просмотр открыт
+            if (fullscreenViewer.classList.contains('open')) {
+                fadeSwapImage('fs', fullscreenImageEl, src);
+            } else {
+                // Подготовим картинку заранее, без анимации
+                fullscreenImageEl.src = src;
+            }
+
+            counterEl.textContent = (index + 1) + ' / ' + images.length;
             updateActiveThumb(index);
         }
 
@@ -737,12 +796,15 @@
         }
 
         // --- Клик по главному изображению → открыть полноэкранный режим ---
-        const mainImageContainer = document.getElementById('mainImageContainer');
-        const fullscreenViewer = document.getElementById('fullscreenViewer');
-
         mainImageContainer.addEventListener('click', () => {
-            document.getElementById('fullscreenImage').src = images[currentIndex];
-            document.getElementById('counter').textContent = (currentIndex + 1) + ' / ' + images.length;
+            // Отменяем возможный незавершённый фейд в полноэкранном просмотре
+            clearTimeout(fadeTimers.fs);
+            clearTimeout(fadeRevealTimers.fs);
+
+            fullscreenImageEl.src = images[currentIndex];
+            fullscreenImageEl.style.opacity = '1';
+
+            counterEl.textContent = (currentIndex + 1) + ' / ' + images.length;
             fullscreenViewer.classList.add('open');
             document.body.style.overflow = 'hidden'; // блокируем прокрутку фона
         });
