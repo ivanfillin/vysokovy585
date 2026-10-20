@@ -162,12 +162,14 @@
             touch-action: pan-y;
         }
 
-        .main-image img {
-            max-width: 100%;
-            max-height: 100%;
+        /* Слои для кроссфейда — оба абсолютные, перекрывают друг друга */
+        .main-image .img-layer {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
-            pointer-events: none; /* чтобы клик ловил контейнер, а не сама картинка */
-            transition: opacity 0.2s ease;
+            pointer-events: none;
             will-change: opacity;
         }
 
@@ -406,13 +408,18 @@
             display: flex;
         }
 
-        .fullscreen-viewer img {
-            max-width: 92vw;
-            max-height: 85vh;
+        /* Слои для кроссфейда в полноэкранном режиме */
+        .fullscreen-viewer .img-layer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 92vw;
+            height: 85vh;
+            transform: translate(-50%, -50%);
             object-fit: contain;
             pointer-events: none;
-            transition: opacity 0.2s ease;
             will-change: opacity;
+            user-select: none;
         }
 
         .close-btn {
@@ -481,6 +488,7 @@
             padding: 6px 14px;
             border-radius: 20px;
             letter-spacing: 1px;
+            z-index: 10;
         }
 
         /* --- Футер --- */
@@ -582,9 +590,7 @@
                     <img src="img4.png" onclick="changeImage(this, 3)" alt="Фото 4">
                     <img src="img5.png" onclick="changeImage(this, 4)" alt="Фото 5">
                 </div>
-                <div class="main-image" id="mainImageContainer">
-                    <img id="mainImage" src="img1.png" alt="Подвеска Башмачок Спиридона">
-                </div>
+                <div class="main-image" id="mainImageContainer"></div>
             </div>
 
             <!-- Информация -->
@@ -700,7 +706,6 @@
     <div class="fullscreen-viewer" id="fullscreenViewer">
         <button class="close-btn" id="closeBtn" aria-label="Закрыть">✕</button>
         <button class="nav-arrow prev" id="prevBtnFs" aria-label="Предыдущее">‹</button>
-        <img id="fullscreenImage" src="" alt="Просмотр">
         <button class="nav-arrow next" id="nextBtnFs" aria-label="Следующее">›</button>
         <div class="counter" id="counter">1 / 5</div>
     </div>
@@ -711,49 +716,138 @@
         const images = ['img1.png', 'img2.png', 'img3.png', 'img4.png', 'img5.png'];
         let currentIndex = 0;
 
-        // Основные DOM-элементы галереи
-        const mainImageEl = document.getElementById('mainImage');
+        // Основные DOM-элементы
         const mainImageContainer = document.getElementById('mainImageContainer');
         const fullscreenViewer = document.getElementById('fullscreenViewer');
-        const fullscreenImageEl = document.getElementById('fullscreenImage');
         const counterEl = document.getElementById('counter');
 
-        // --- Плавная смена изображения (фейд) ---
-        const FADE_OUT_MS = 200; // синхронизировано с CSS transition у картинок
-        const fadeTimers = { main: null, fs: null };
-        const fadeRevealTimers = { main: null, fs: null };
+        // Длительность перетекания (мс)
+        const FADE_DURATION = 280;
+
+        // --- Предзагрузка картинки ---
+        function preload(src) {
+            return new Promise((resolve) => {
+                const im = new Image();
+                im.onload = () => resolve();
+                im.onerror = () => resolve();
+                im.src = src;
+            });
+        }
 
         /**
-         * Меняет src у изображения с плавным затуханием и появлением.
-         * key — 'main' или 'fs' (чтобы таймеры не конфликтовали)
+         * Кроссфейдер: держит два слоя (base + top) в контейнере.
+         * base всегда opacity:1 и содержит "старое" изображение.
+         * top плавно меняет opacity 0→1 с "новым" изображением.
+         * По завершении base получает новую картинку, top сбрасывается в 0.
+         * Так визуально получается настоящее перетекание A→B без пустоты.
          */
-        function fadeSwapImage(key, imgEl, newSrc) {
-            clearTimeout(fadeTimers[key]);
-            clearTimeout(fadeRevealTimers[key]);
+        function createCrossfader(container, initialSrc, duration) {
+            const base = document.createElement('img');
+            base.className = 'img-layer';
+            base.alt = '';
+            const top = document.createElement('img');
+            top.className = 'img-layer';
+            top.alt = '';
 
-            // Плавно прячем текущее изображение
-            imgEl.style.opacity = '0';
+            base.src = initialSrc;
+            top.src = initialSrc;
+            base.style.opacity = '1';
+            top.style.opacity = '0';
 
-            fadeTimers[key] = setTimeout(() => {
-                const reveal = () => {
-                    clearTimeout(fadeRevealTimers[key]);
-                    imgEl.style.opacity = '1';
-                };
+            container.appendChild(base);
+            container.appendChild(top);
 
-                imgEl.onload = reveal;
-                imgEl.onerror = reveal;
+            let currentSrc = initialSrc;
+            let transitioning = false;
+            let queuedSrc = null;
+            let generation = 0;   // защита от «устаревших» асинхронных операций
+            let timerId = null;   // отменяемый таймер завершения перехода
 
-                imgEl.src = newSrc;
+            async function setSrc(newSrc) {
+                if (newSrc === currentSrc && !transitioning) return;
 
-                // Если картинка уже в кэше — показываем после отрисовки кадра
-                if (imgEl.complete && imgEl.naturalWidth > 0) {
-                    requestAnimationFrame(() => requestAnimationFrame(reveal));
+                // Если уже в процессе — ставим в очередь, дождёмся завершения
+                if (transitioning) {
+                    queuedSrc = newSrc;
+                    return;
                 }
 
-                // Страховка, чтобы изображение не осталось невидимым
-                fadeRevealTimers[key] = setTimeout(reveal, 1500);
-            }, FADE_OUT_MS);
+                const myGen = ++generation;
+                transitioning = true;
+
+                await preload(newSrc);
+
+                // Пока грузили — могли отменить (syncInstant или новый вызов)
+                if (myGen !== generation) return;
+
+                // 1) Готовим top: мгновенно в opacity 0, меняем src
+                top.style.transition = 'none';
+                top.style.opacity = '0';
+                top.src = newSrc;
+                void top.offsetHeight; // сброс стилей, чтобы transition не «прилип»
+
+                // 2) Запускаем перетекание: top 0 → 1 поверх непрозрачного base
+                top.style.transition = 'opacity ' + duration + 'ms ease';
+                void top.offsetHeight; // фиксируем transition перед изменением opacity
+                top.style.opacity = '1';
+
+                // 3) По завершении «коммитим»: base получает тот же src, top гаснет
+                timerId = setTimeout(() => {
+                    timerId = null;
+                    if (myGen !== generation) return;
+
+                    base.src = newSrc;
+                    top.style.transition = 'none';
+                    top.style.opacity = '0';
+                    void top.offsetHeight;
+
+                    currentSrc = newSrc;
+                    transitioning = false;
+
+                    // Обрабатываем очередь
+                    if (queuedSrc !== null && queuedSrc !== currentSrc) {
+                        const next = queuedSrc;
+                        queuedSrc = null;
+                        setSrc(next);
+                    } else {
+                        queuedSrc = null;
+                    }
+                }, duration + 30);
+            }
+
+            // Мгновенная синхронизация (например, при открытии фуллскрина)
+            function syncInstant(src) {
+                if (src === currentSrc && !transitioning) return;
+
+                generation++; // инвалидируем любые «висящие» операции
+                if (timerId) {
+                    clearTimeout(timerId);
+                    timerId = null;
+                }
+
+                top.style.transition = 'none';
+                base.src = src;
+                top.src = src;
+                base.style.opacity = '1';
+                top.style.opacity = '0';
+                void top.offsetHeight;
+                top.style.transition = 'opacity ' + duration + 'ms ease';
+
+                currentSrc = src;
+                transitioning = false;
+                queuedSrc = null;
+            }
+
+            return {
+                setSrc,
+                syncInstant,
+                getCurrent: () => currentSrc
+            };
         }
+
+        // Инициализируем два кроссфейдера — для галереи и для фуллскрина
+        const mainCrossfader = createCrossfader(mainImageContainer, images[0], FADE_DURATION);
+        const fsCrossfader = createCrossfader(fullscreenViewer, images[0], FADE_DURATION);
 
         // --- Вспомогательная функция: обновить активную миниатюру ---
         function updateActiveThumb(index) {
@@ -763,50 +857,35 @@
             });
         }
 
-        // --- Функция: показать картинку по индексу ---
+        // --- Показать картинку по индексу ---
         function showImage(index) {
-            // Зацикливаем индекс
             if (index < 0) index = images.length - 1;
             if (index >= images.length) index = 0;
-
-            // Если это уже текущее изображение — не мигаем
             if (index === currentIndex) return;
 
             currentIndex = index;
             const src = images[index];
 
-            // Главное изображение — с фейдом
-            fadeSwapImage('main', mainImageEl, src);
-
-            // Полноэкранное — с фейдом, только если просмотр открыт
+            mainCrossfader.setSrc(src);
             if (fullscreenViewer.classList.contains('open')) {
-                fadeSwapImage('fs', fullscreenImageEl, src);
-            } else {
-                // Подготовим картинку заранее, без анимации
-                fullscreenImageEl.src = src;
+                fsCrossfader.setSrc(src);
             }
 
             counterEl.textContent = (index + 1) + ' / ' + images.length;
             updateActiveThumb(index);
         }
 
-        // --- Функция: клик по миниатюре ---
+        // --- Клик по миниатюре ---
         function changeImage(element, index) {
             showImage(index);
         }
 
         // --- Клик по главному изображению → открыть полноэкранный режим ---
         mainImageContainer.addEventListener('click', () => {
-            // Отменяем возможный незавершённый фейд в полноэкранном просмотре
-            clearTimeout(fadeTimers.fs);
-            clearTimeout(fadeRevealTimers.fs);
-
-            fullscreenImageEl.src = images[currentIndex];
-            fullscreenImageEl.style.opacity = '1';
-
+            fsCrossfader.syncInstant(images[currentIndex]);
             counterEl.textContent = (currentIndex + 1) + ' / ' + images.length;
             fullscreenViewer.classList.add('open');
-            document.body.style.overflow = 'hidden'; // блокируем прокрутку фона
+            document.body.style.overflow = 'hidden';
         });
 
         // --- Закрыть полноэкранный режим ---
@@ -827,7 +906,7 @@
             }
         });
 
-        // --- Стрелки навигации в полноэкранном режиме ---
+        // --- Стрелки в полноэкранном режиме ---
         document.getElementById('prevBtnFs').addEventListener('click', (e) => {
             e.stopPropagation();
             showImage(currentIndex - 1);
@@ -838,7 +917,7 @@
             showImage(currentIndex + 1);
         });
 
-        // --- Стрелки клавиатуры и Escape (для десктопа) ---
+        // --- Стрелки клавиатуры и Escape ---
         document.addEventListener('keydown', (e) => {
             if (!fullscreenViewer.classList.contains('open')) return;
             if (e.key === 'ArrowLeft') showImage(currentIndex - 1);
@@ -847,12 +926,11 @@
         });
 
         // --- Свайпы ---
-        // Универсальная функция для свайпа на элементе
         function attachSwipe(el, onSwipeLeft, onSwipeRight) {
             let startX = 0;
             let startY = 0;
             let isSwiping = false;
-            const threshold = 40; // минимальное расстояние для свайпа
+            const threshold = 40;
 
             el.addEventListener('touchstart', (e) => {
                 if (e.touches.length !== 1) return;
@@ -865,10 +943,7 @@
                 if (!isSwiping) return;
                 const dx = e.touches[0].clientX - startX;
                 const dy = e.touches[0].clientY - startY;
-                // Если свайп больше вертикальный — не мешаем скроллу страницы
-                if (Math.abs(dy) > Math.abs(dx)) {
-                    isSwiping = false;
-                }
+                if (Math.abs(dy) > Math.abs(dx)) isSwiping = false;
             }, { passive: true });
 
             el.addEventListener('touchend', (e) => {
@@ -886,14 +961,12 @@
             }, { passive: true });
         }
 
-        // Свайп на главном изображении
         attachSwipe(
             mainImageContainer,
-            () => showImage(currentIndex + 1), // свайп влево → следующее
-            () => showImage(currentIndex - 1)  // свайп вправо → предыдущее
+            () => showImage(currentIndex + 1),
+            () => showImage(currentIndex - 1)
         );
 
-        // Свайп в полноэкранном режиме
         attachSwipe(
             fullscreenViewer,
             () => showImage(currentIndex + 1),
@@ -904,10 +977,10 @@
         function openTab(tabId, btnElement) {
             const contents = document.querySelectorAll('.tab-content');
             contents.forEach(content => content.classList.remove('active'));
-            
+
             const buttons = document.querySelectorAll('.tab-btn');
             buttons.forEach(btn => btn.classList.remove('active'));
-            
+
             document.getElementById(tabId).classList.add('active');
             btnElement.classList.add('active');
         }
