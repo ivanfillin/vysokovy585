@@ -173,6 +173,45 @@
             will-change: opacity;
         }
 
+        /* --- Плашка-заглушка с лоадером --- */
+        .loader-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(242, 245, 249, 0.85);
+            z-index: 5;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .loader-overlay.visible {
+            opacity: 1;
+        }
+
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid rgba(0, 91, 255, 0.2);
+            border-top-color: var(--ozon-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .loader-text {
+            font-size: 13px;
+            color: #707070;
+            letter-spacing: 0.3px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         /* --- Информация о товаре --- */
         .product-info h1 {
             font-size: 22px;
@@ -420,6 +459,20 @@
             pointer-events: none;
             will-change: opacity;
             user-select: none;
+        }
+
+        /* Тёмная версия плашки для фуллскрина */
+        .fullscreen-viewer .loader-overlay {
+            background: rgba(0, 0, 0, 0.45);
+        }
+
+        .fullscreen-viewer .spinner {
+            border-color: rgba(255, 255, 255, 0.2);
+            border-top-color: #fff;
+        }
+
+        .fullscreen-viewer .loader-text {
+            color: rgba(255, 255, 255, 0.85);
         }
 
         .close-btn {
@@ -724,50 +777,89 @@
         // Длительность перетекания (мс)
         const FADE_DURATION = 280;
 
-        // --- Предзагрузка картинки ---
-        function preload(src) {
-            return new Promise((resolve) => {
+        // --- Кэш загруженных изображений ---
+        const loadedImages = new Set();
+        const loadingPromises = new Map();
+
+        function preloadImage(src) {
+            if (loadedImages.has(src)) return Promise.resolve();
+            if (loadingPromises.has(src)) return loadingPromises.get(src);
+
+            const p = new Promise((resolve) => {
                 const im = new Image();
-                im.onload = () => resolve();
-                im.onerror = () => resolve();
+                const done = () => {
+                    loadedImages.add(src);
+                    loadingPromises.delete(src);
+                    resolve();
+                };
+                im.onload = done;
+                im.onerror = done; // не залипаем на битой ссылке
                 im.src = src;
             });
+
+            loadingPromises.set(src, p);
+            return p;
         }
 
+        // Запускаем предзагрузку всех изображений в фоне при старте
+        images.forEach(preloadImage);
+
         /**
-         * Кроссфейдер: держит два слоя (base + top) в контейнере.
-         * base всегда opacity:1 и содержит "старое" изображение.
-         * top плавно меняет opacity 0→1 с "новым" изображением.
-         * По завершении base получает новую картинку, top сбрасывается в 0.
-         * Так визуально получается настоящее перетекание A→B без пустоты.
+         * Кроссфейдер: base (opacity:1) + top (0→1) — визуально A растворяется в B.
+         * Плюс плашка-заглушка, пока картинка ещё не загружена.
          */
         function createCrossfader(container, initialSrc, duration) {
             const base = document.createElement('img');
             base.className = 'img-layer';
             base.alt = '';
+
             const top = document.createElement('img');
             top.className = 'img-layer';
             top.alt = '';
+
+            const loader = document.createElement('div');
+            loader.className = 'loader-overlay';
+            loader.innerHTML = '<div class="spinner"></div><div class="loader-text">Загрузка…</div>';
+
+            container.appendChild(base);
+            container.appendChild(top);
+            container.appendChild(loader);
 
             base.src = initialSrc;
             top.src = initialSrc;
             base.style.opacity = '1';
             top.style.opacity = '0';
 
-            container.appendChild(base);
-            container.appendChild(top);
-
             let currentSrc = initialSrc;
             let transitioning = false;
             let queuedSrc = null;
-            let generation = 0;   // защита от «устаревших» асинхронных операций
-            let timerId = null;   // отменяемый таймер завершения перехода
+            let generation = 0;
+            let transitionTimer = null;
+            let loaderTimer = null;
+
+            function showLoader(delay = 150) {
+                clearTimeout(loaderTimer);
+                loaderTimer = setTimeout(() => loader.classList.add('visible'), delay);
+            }
+
+            function hideLoader() {
+                clearTimeout(loaderTimer);
+                loader.classList.remove('visible');
+            }
+
+            // Начальная загрузка — если картинка ещё не в кэше, покажем плашку
+            if (!loadedImages.has(initialSrc)) {
+                showLoader();
+                preloadImage(initialSrc).then(() => {
+                    if (currentSrc === initialSrc && !transitioning) hideLoader();
+                });
+            }
 
             async function setSrc(newSrc) {
                 if (newSrc === currentSrc && !transitioning) return;
 
-                // Если уже в процессе — ставим в очередь, дождёмся завершения
                 if (transitioning) {
+                    // Уже идёт перетекание/загрузка — запоминаем последнюю цель
                     queuedSrc = newSrc;
                     return;
                 }
@@ -775,25 +867,29 @@
                 const myGen = ++generation;
                 transitioning = true;
 
-                await preload(newSrc);
+                // Если картинки нет в кэше — сразу показываем плашку
+                if (!loadedImages.has(newSrc)) {
+                    showLoader(0); // без задержки: пользователь уже ждёт
+                }
 
-                // Пока грузили — могли отменить (syncInstant или новый вызов)
+                await preloadImage(newSrc);
+
                 if (myGen !== generation) return;
 
-                // 1) Готовим top: мгновенно в opacity 0, меняем src
+                hideLoader();
+
+                // Кроссфейд
                 top.style.transition = 'none';
                 top.style.opacity = '0';
                 top.src = newSrc;
-                void top.offsetHeight; // сброс стилей, чтобы transition не «прилип»
+                void top.offsetHeight;
 
-                // 2) Запускаем перетекание: top 0 → 1 поверх непрозрачного base
                 top.style.transition = 'opacity ' + duration + 'ms ease';
-                void top.offsetHeight; // фиксируем transition перед изменением opacity
+                void top.offsetHeight;
                 top.style.opacity = '1';
 
-                // 3) По завершении «коммитим»: base получает тот же src, top гаснет
-                timerId = setTimeout(() => {
-                    timerId = null;
+                transitionTimer = setTimeout(() => {
+                    transitionTimer = null;
                     if (myGen !== generation) return;
 
                     base.src = newSrc;
@@ -804,7 +900,6 @@
                     currentSrc = newSrc;
                     transitioning = false;
 
-                    // Обрабатываем очередь
                     if (queuedSrc !== null && queuedSrc !== currentSrc) {
                         const next = queuedSrc;
                         queuedSrc = null;
@@ -817,13 +912,13 @@
 
             // Мгновенная синхронизация (например, при открытии фуллскрина)
             function syncInstant(src) {
-                if (src === currentSrc && !transitioning) return;
-
-                generation++; // инвалидируем любые «висящие» операции
-                if (timerId) {
-                    clearTimeout(timerId);
-                    timerId = null;
+                generation++;
+                if (transitionTimer) {
+                    clearTimeout(transitionTimer);
+                    transitionTimer = null;
                 }
+                transitioning = false;
+                queuedSrc = null;
 
                 top.style.transition = 'none';
                 base.src = src;
@@ -834,14 +929,22 @@
                 top.style.transition = 'opacity ' + duration + 'ms ease';
 
                 currentSrc = src;
-                transitioning = false;
-                queuedSrc = null;
+
+                if (!loadedImages.has(src)) {
+                    showLoader(0);
+                    preloadImage(src).then(() => {
+                        if (currentSrc === src && !transitioning) hideLoader();
+                    });
+                } else {
+                    hideLoader();
+                }
             }
 
             return {
                 setSrc,
                 syncInstant,
-                getCurrent: () => currentSrc
+                getCurrent: () => currentSrc,
+                hideLoader
             };
         }
 
@@ -849,7 +952,7 @@
         const mainCrossfader = createCrossfader(mainImageContainer, images[0], FADE_DURATION);
         const fsCrossfader = createCrossfader(fullscreenViewer, images[0], FADE_DURATION);
 
-        // --- Вспомогательная функция: обновить активную миниатюру ---
+        // --- Обновить активную миниатюру ---
         function updateActiveThumb(index) {
             const thumbnails = document.querySelectorAll('.thumbnails img');
             thumbnails.forEach((thumb, i) => {
@@ -866,13 +969,15 @@
             currentIndex = index;
             const src = images[index];
 
+            // UI-реакция мгновенная — не ждём загрузки картинки
+            counterEl.textContent = (index + 1) + ' / ' + images.length;
+            updateActiveThumb(index);
+
+            // Кроссфейдер сам покажет плашку, если картинка ещё не загружена
             mainCrossfader.setSrc(src);
             if (fullscreenViewer.classList.contains('open')) {
                 fsCrossfader.setSrc(src);
             }
-
-            counterEl.textContent = (index + 1) + ' / ' + images.length;
-            updateActiveThumb(index);
         }
 
         // --- Клик по миниатюре ---
@@ -892,6 +997,7 @@
         function closeFullscreen() {
             fullscreenViewer.classList.remove('open');
             document.body.style.overflow = '';
+            fsCrossfader.hideLoader();
         }
 
         document.getElementById('closeBtn').addEventListener('click', (e) => {
